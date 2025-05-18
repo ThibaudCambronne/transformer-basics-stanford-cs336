@@ -21,7 +21,9 @@ def test_train_bpe_speed():
         special_tokens=["<|endoftext|>"],
     )
     end_time = time.time()
-    assert end_time - start_time < 1.5
+    assert (
+        end_time - start_time < 1.5
+    ), f"Your training took {end_time - start_time:.2f} s which is more than the required 1.5 s."
 
 
 def test_train_bpe():
@@ -38,22 +40,34 @@ def test_train_bpe():
 
     # Compare the learned merges to the expected output merges
     gpt2_byte_decoder = {v: k for k, v in gpt2_bytes_to_unicode().items()}
-    with open(reference_merges_path) as f:
-        gpt2_reference_merges = [tuple(line.rstrip().split(" ")) for line in f]
+    with open(reference_merges_path, mode="rb") as f:
+        gpt2_reference_merges = [tuple(line.rstrip().split(b" ")) for line in f]
         reference_merges = [
             (
-                bytes([gpt2_byte_decoder[token] for token in merge_token_1]),
-                bytes([gpt2_byte_decoder[token] for token in merge_token_2]),
+                bytes(
+                    [
+                        gpt2_byte_decoder[token]
+                        for token in merge_token_1.decode("utf-8")
+                    ]
+                ),
+                bytes(
+                    [
+                        gpt2_byte_decoder[token]
+                        for token in merge_token_2.decode("utf-8")
+                    ]
+                ),
             )
             for merge_token_1, merge_token_2 in gpt2_reference_merges
         ]
     assert merges == reference_merges
 
     # Compare the vocab to the expected output vocab
-    with open(reference_vocab_path) as f:
+    with open(reference_vocab_path, mode="rb") as f:
         gpt2_reference_vocab = json.load(f)
         reference_vocab = {
-            gpt2_vocab_index: bytes([gpt2_byte_decoder[token] for token in gpt2_vocab_item])
+            gpt2_vocab_index: bytes(
+                [gpt2_byte_decoder[token] for token in gpt2_vocab_item]
+            )
             for gpt2_vocab_item, gpt2_vocab_index in gpt2_reference_vocab.items()
         }
     # Rather than checking that the vocabs exactly match (since they could
@@ -75,7 +89,9 @@ def test_train_bpe_special_tokens(snapshot):
     )
 
     # Check that the special token is not in the vocab
-    vocabs_without_specials = [word for word in vocab.values() if word != b"<|endoftext|>"]
+    vocabs_without_specials = [
+        word for word in vocab.values() if word != b"<|endoftext|>"
+    ]
     for word_bytes in vocabs_without_specials:
         assert b"<|" not in word_bytes
 
@@ -86,3 +102,7 @@ def test_train_bpe_special_tokens(snapshot):
             "merges": merges,
         },
     )
+
+
+if __name__ == "__main__":
+    test_train_bpe()
